@@ -15,9 +15,10 @@
 #include "logger.h"
 #include "loggingobj.h"
 
+
 using namespace std::chrono;
 
-#define NUMBER_OF_THREADS (1)
+#define NUMBER_OF_THREADS (4)
 #define FIRST_PORT (7001)
 
 #define BYTETOBINARYPATTERN "%d%d%d%d%d%d%d%d"
@@ -143,30 +144,15 @@ int main()
     std::string filename;
     std::cin >> filename;
 
-
-//    struct thread_param t1;
-
-//    t1.logfile = (char*) (filename.c_str());
-//    t1.port = FIRST_PORT;
-
-//    log_socket((void*) &t1);
-
-//    while (global_stop == 0)
-//    {
-//        // run
-//    }
-
-//    return 0;
-
+    char buf[NUMBER_OF_THREADS][100];
 
     // Create logger threads
     for (int i = 0; i < NUMBER_OF_THREADS; i++)
     {
-        char buf[100];
 
         // Logfile gets consecutive number
-        sprintf(((char*)buf), "%s_%d", filename.c_str(), i);
-        t[i].logfile = buf;
+        sprintf((char*)(buf[i]), "%s_%d", filename.c_str(), i);
+        t[i].logfile = buf[i];
 
         // Set port
         t[i].port = FIRST_PORT + i;
