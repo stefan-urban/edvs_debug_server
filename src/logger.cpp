@@ -11,12 +11,9 @@
 
 Logger::Logger(std::string file)
 {
-    if (file.find(".dvs") == std::string::npos)
-    {
-        file.append(".dvs");
-    }
-
+    file.append(".dvs");
     this->logfile = file;
+
     this->bufferSize = 0;
 }
 

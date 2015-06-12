@@ -16,3 +16,5 @@ HEADERS += \
     loggingobj.h
 
 QMAKE_CXXFLAGS += -std=c++11
+
+TARGET = serial-client-logger

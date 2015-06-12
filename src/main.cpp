@@ -18,7 +18,7 @@
 
 using namespace std::chrono;
 
-#define NUMBER_OF_THREADS (4)
+#define NUMBER_OF_THREADS (7)
 #define FIRST_PORT (7001)
 
 #define BYTETOBINARYPATTERN "%d%d%d%d%d%d%d%d"
@@ -56,7 +56,7 @@ void* log_socket(void *param)
 
     // Setup local TCP socket
     std::string data;
-    TcpSerialSocket tss("127.0.0.1", t->port);
+    TcpSerialSocket tss("10.162.177.202", t->port);
     tss.conn();
 
 
@@ -95,6 +95,8 @@ void* log_socket(void *param)
         log.addObj(new LoggingObj(data[0] & 0x7F, data[1] & 0x7F, (data[1] & 0x80) ? 1 : 0, us.count()));
     }
 
+    tss.clear_buffer();
+    tss.send_data("E-\n");
 
     seconds end = duration_cast< seconds >(
         system_clock::now().time_since_epoch()
@@ -109,8 +111,49 @@ void* log_socket(void *param)
 pthread_t thread[NUMBER_OF_THREADS];
 struct thread_param t[NUMBER_OF_THREADS];
 
-int main()
+
+char logfile[100] = "";
+int dur = 20;
+
+#define HELP_MESSAGE "\n\
+Serial Client Logger\n\n\
+Command line arguments:\n\
+ -l logfile : Name of logfile (without .dvs extension) \n\
+ -d duration : Duration of measurement\n\
+\n\
+Example: \n\
+./serial-client-logger -l test1 -d 60\n\n"
+
+int main(int argc, char** argv)
 {
+    // Get command line options
+    int c;
+
+    while ((c = getopt(argc, argv, "l:d:h?")) != -1)
+    {
+        switch (c)
+        {
+        case 'l':
+            sscanf(optarg, "%s", logfile);
+            printf("Device path: %s\n", (char*)logfile);
+            break;
+
+        case 'd':
+            sscanf(optarg, "%d", &dur);
+            printf("Duration: %d\n", dur);
+            break;
+
+        case 'h':
+        case '?':
+            printf(HELP_MESSAGE);
+            return 0;
+            break;
+
+        default:
+            break;
+        }
+    }
+
     // Setup right singal handling (allows to safely terminate applicaiton with Ctrl+C)
     // ... as described in http://www.gnu.org/software/libc/manual/html_node/Sigaction-Function-Example.html
     struct sigaction new_action, old_action;
@@ -137,19 +180,27 @@ int main()
         sigaction (SIGTERM, &new_action, NULL);
     }
 
-
-    // Get logging filename
-    std::cout << "Log-File-Name: ";
-
+    // Determine filename
     std::string filename;
-    std::cin >> filename;
+    if (strlen(logfile) > 0)
+    {
+        // From command line arguement
+        filename = std::string(logfile);
+    }
+    else
+    {
+        // Get logging filename
+        std::cout << "Log-File-Name: ";
+
+
+        std::cin >> filename;
+    }
 
     char buf[NUMBER_OF_THREADS][100];
 
     // Create logger threads
     for (int i = 0; i < NUMBER_OF_THREADS; i++)
     {
-
         // Logfile gets consecutive number
         sprintf((char*)(buf[i]), "%s_%d", filename.c_str(), i);
         t[i].logfile = buf[i];
@@ -161,9 +212,24 @@ int main()
         pthread_create(&(thread[i]), NULL, log_socket, (void *) &(t[i]));
     }
 
+
+    seconds start = duration_cast< seconds >(
+        system_clock::now().time_since_epoch()
+    );
+
+
     while (global_stop == 0)
     {
-        // just wait
+        seconds end = duration_cast< seconds >(
+            system_clock::now().time_since_epoch()
+        );
+
+        if ((int)(end.count() - start.count()) > dur)
+        {
+            global_stop = 1;
+        }
+
+        usleep(100000);
     }
 
     return 0;
